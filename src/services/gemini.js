@@ -328,6 +328,7 @@ IMPORTANT:
         contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
         generationConfig: {
           responseMimeType: 'application/json',
+          maxOutputTokens: 65536,
         },
       });
       return res;
@@ -382,7 +383,20 @@ IMPORTANT:
   }
 
   const response = await result.response;
-  const text = response.text();
+  let text;
+  try {
+    text = response.text();
+  } catch (textErr) {
+    console.error('Failed to read AI response text:', textErr);
+    throw new Error('AI returned an empty response. Please try again.');
+  }
+
+  if (!text || text.trim().length === 0) {
+    console.error('AI response was empty or whitespace-only.');
+    throw new Error('AI returned an empty response. Please try again.');
+  }
+
+  console.log('AI response length:', text.length, 'chars. First 200:', text.substring(0, 200));
 
   let parsed;
   try {
@@ -406,8 +420,46 @@ IMPORTANT:
         }
       }
     } catch (e2) {
-      console.error('Failed to parse Gemini response (all strategies failed):', text.substring(0, 500));
-      throw new Error('AI returned an unexpected format. Please try again.');
+      // Strategy 4: Repair truncated JSON (output was cut off before completion)
+      try {
+        let candidate = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const startIdx = candidate.indexOf('{');
+        if (startIdx === -1) throw new Error('No JSON start found');
+        candidate = candidate.substring(startIdx);
+
+        // Remove any trailing incomplete string value (e.g., truncated mid-sentence)
+        candidate = candidate.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, '')    // truncated key-value string
+                             .replace(/,\s*"[^"]*"\s*:\s*$/, '')           // truncated after colon
+                             .replace(/,\s*"[^"]*$/, '')                   // truncated key
+                             .replace(/,\s*$/, '');                         // trailing comma
+
+        // Count unbalanced braces and brackets
+        let braces = 0, brackets = 0;
+        let inString = false, escape = false;
+        for (const ch of candidate) {
+          if (escape) { escape = false; continue; }
+          if (ch === '\\') { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === '{') braces++;
+          else if (ch === '}') braces--;
+          else if (ch === '[') brackets++;
+          else if (ch === ']') brackets--;
+        }
+
+        // Append missing closers
+        while (brackets > 0) { candidate += ']'; brackets--; }
+        while (braces > 0) { candidate += '}'; braces--; }
+
+        parsed = JSON.parse(candidate);
+        console.warn('⚠️ AI response was truncated — repaired JSON successfully (some data may be incomplete).');
+      } catch (e3) {
+        console.error('Failed to parse Gemini response (all 4 strategies failed).');
+        console.error('Response length:', text.length);
+        console.error('First 500 chars:', text.substring(0, 500));
+        console.error('Last 300 chars:', text.substring(text.length - 300));
+        throw new Error('AI returned an unexpected format. Please try again.');
+      }
     }
   }
 
@@ -484,13 +536,24 @@ Return the FULL updated JSON object with the same structure as before.`;
       contents: [{ role: 'user', parts: [{ text: prompt }, { text: JSON.stringify(currentAnalysis) }] }],
       generationConfig: {
         responseMimeType: 'application/json',
+        maxOutputTokens: 65536,
       },
     });
     return res;
   });
 
   const response = await result.response;
-  const text = response.text();
+  let text;
+  try {
+    text = response.text();
+  } catch (textErr) {
+    console.error('Failed to read refinement response text:', textErr);
+    throw new Error('AI returned an empty response. Please try again.');
+  }
+
+  if (!text || text.trim().length === 0) {
+    throw new Error('AI returned an empty response during refinement. Please try again.');
+  }
 
   try {
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -508,8 +571,37 @@ Return the FULL updated JSON object with the same structure as before.`;
       }
       throw new Error('No JSON found');
     } catch (e2) {
-      console.error('Failed to parse refinement (all strategies failed):', text.substring(0, 500));
-      throw new Error('Could not refine blueprint. Please try again.');
+      // Strategy 4: Repair truncated JSON
+      try {
+        let candidate = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const startIdx = candidate.indexOf('{');
+        if (startIdx === -1) throw new Error('No JSON start');
+        candidate = candidate.substring(startIdx);
+        candidate = candidate.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, '')
+                             .replace(/,\s*"[^"]*"\s*:\s*$/, '')
+                             .replace(/,\s*"[^"]*$/, '')
+                             .replace(/,\s*$/, '');
+        let braces = 0, brackets = 0;
+        let inString = false, escape = false;
+        for (const ch of candidate) {
+          if (escape) { escape = false; continue; }
+          if (ch === '\\') { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === '{') braces++;
+          else if (ch === '}') braces--;
+          else if (ch === '[') brackets++;
+          else if (ch === ']') brackets--;
+        }
+        while (brackets > 0) { candidate += ']'; brackets--; }
+        while (braces > 0) { candidate += '}'; braces--; }
+        const repaired = JSON.parse(candidate);
+        console.warn('⚠️ Refinement response was truncated — repaired JSON successfully.');
+        return repaired;
+      } catch (e3) {
+        console.error('Failed to parse refinement (all 4 strategies failed):', text.substring(0, 500));
+        throw new Error('Could not refine blueprint. Please try again.');
+      }
     }
   }
 }

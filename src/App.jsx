@@ -42,19 +42,23 @@ export default function App() {
 
   // Check for stored user and API key on mount
   useEffect(() => {
-    const storedUser = getStoredUser();
-    const storedToken = getStoredToken();
-    if (storedUser && storedToken) {
-      // Verify token is still valid
-      getMe()
-        .then(data => {
-          setUser(data.user);
-        })
-        .catch(() => {
-          // Token expired, clear
-          apiLogout();
-          setUser(null);
-        });
+    // In production (Vercel), auto-set a guest user to bypass auth
+    const isProduction = import.meta.env.PROD;
+    if (isProduction && !user) {
+      setUser({ id: 'guest', name: 'Guest User', email: 'guest@buildx.ai' });
+    } else {
+      const storedUser = getStoredUser();
+      const storedToken = getStoredToken();
+      if (storedUser && storedToken) {
+        getMe()
+          .then(data => {
+            setUser(data.user);
+          })
+          .catch(() => {
+            apiLogout();
+            setUser(null);
+          });
+      }
     }
 
     const storedKey = localStorage.getItem('buildx_api_key');
@@ -88,6 +92,7 @@ export default function App() {
   };
 
   const handleGetStarted = () => {
+    // In production, user is always set (guest). Skip auth entirely.
     if (user) {
       if (apiKey) {
         setPhase(PHASES.MAP_SELECT);

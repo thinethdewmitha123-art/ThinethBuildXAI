@@ -47,6 +47,12 @@ const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
 function authMiddleware(req, res, next) {
+    // On Vercel: skip auth entirely, inject a mock guest user
+    if (process.env.VERCEL) {
+        req.user = { id: 'guest', name: 'Guest User', email: 'guest@buildx.ai', is_admin: 0, status: 'active' };
+        return next();
+    }
+
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Authentication required' });
     try {

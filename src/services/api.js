@@ -3,7 +3,7 @@
  * Communicates with the Express backend for auth, users, and projects.
  */
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 function getToken() {
     return localStorage.getItem('buildx_token');
@@ -25,8 +25,19 @@ async function request(endpoint, options = {}) {
         ...options,
     };
 
-    const res = await fetch(url, config);
-    const data = await res.json();
+    let res;
+    try {
+        res = await fetch(url, config);
+    } catch (err) {
+        throw new Error('Failed to connect to backend server. Make sure it is running locally or deployed.');
+    }
+
+    let data;
+    try {
+        data = await res.json();
+    } catch (err) {
+        throw new Error(`Invalid response from server (${res.status}). Ensure the backend is running.`);
+    }
 
     if (!res.ok) {
         throw new Error(data.error || `Request failed (${res.status})`);

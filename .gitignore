@@ -22,9 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Database and uploads (generated at runtime)
-server/*.db
-server/*.db-shm
-server/*.db-wal
-uploads/

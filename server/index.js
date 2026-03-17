@@ -343,27 +343,8 @@ app.delete('/api/admin/projects/:id', authMiddleware, adminMiddleware, (req, res
     }
 });
 
-// ─── Serve Frontend (Production) ──────────────────────────────────────────────
-const distPath = join(__dirname, '..', 'dist');
-if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
-    // SPA fallback: serve index.html for any non-API routes
-    app.get('*', (req, res) => {
-        if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
-            res.sendFile(join(distPath, 'index.html'));
-        }
-    });
-    console.log('📦 Serving production frontend from dist/');
-}
-
-// ─── Export for Vercel Serverless ──────────────────────────────────────────────
-export default app;
-
-// ─── Start Server (local only) ────────────────────────────────────────────────
-if (!process.env.VERCEL) {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`\n🏗️  BuildX AI running on http://localhost:${PORT}`);
-        console.log(`   API:      http://localhost:${PORT}/api`);
-        console.log(`   Frontend: ${fs.existsSync(distPath) ? 'Serving from dist/' : 'Use vite dev server'}\n`);
-    });
-}
+// ─── Start Server ─────────────────────────────────────────────────────────────
+app.listen(PORT, () => {
+    console.log(`\n🏗️  BuildX AI Backend running on http://localhost:${PORT}`);
+    console.log(`   API: http://localhost:${PORT}/api\n`);
+});

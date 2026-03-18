@@ -250,7 +250,12 @@ Use this location to determine:
       : '';
   }
 
-  const prompt = `You are a Senior Structural Engineer, Geotechnical Expert, and Project Manager with 30+ years of field experience.
+  const prompt = `Act as an expert Senior Structural Engineer. You MUST generate the report EXACTLY following the detailed Markdown structure below. DO NOT summarize. Write extremely detailed, long paragraphs. Calculate ALL costs strictly in Sri Lankan Rupees (LKR/Rs).
+You MUST include exactly 10 Safety Warnings.
+You MUST generate a highly detailed line-by-line mathematical breakdown from F1 to F36 explicitly calculating dimensions, volumes, materials, and geotechnical forces.
+
+Model Requirements: Use gemini-1.5-flash with maxOutputTokens set to 65536 or higher.
+
 Analyze the provided construction site photos (Front, Sides, and Ground close-up) and user specifications to generate an EXTREMELY DETAILED, EXHAUSTIVE engineering report.
 ${locationContext}${buildingTypeContext}
 **Building Specifications:**

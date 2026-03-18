@@ -66,7 +66,8 @@ async function callWithFallback(genAI, callFn, maxRetries = 3) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🔄 Trying ${modelName} (attempt ${attempt + 1})...`);
-        const result = await withTimeout(callFn(model), 90000, modelName);
+        // FIXED: Increased timeout to 5 minutes (300000ms) for massive reports
+        const result = await withTimeout(callFn(model), 300000, modelName);
         console.log(`✅ Success with ${modelName}`);
         return result;
       } catch (error) {
@@ -136,8 +137,8 @@ function parseAIResponse(text) {
   console.log('AI response length:', text.length, 'chars');
 
   try {
-    return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-  } catch (e1) {}
+    return JSON.parse(text.replace(/`{3}json\n?/g, '').replace(/`{3}\n?/g, '').trim());
+  } catch (e1) { }
 
   try {
     const match = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);

@@ -12,18 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (NEVER commit .env with API keys)
-.env
-!.env.example
-
-# Database files
-server/*.db
-server/*.db-wal
-server/*.db-shm
-
-# Temp files
-check_db.js
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
